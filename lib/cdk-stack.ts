@@ -62,7 +62,7 @@ export class CdkStack extends cdk.Stack {
       metadata: { name: 'node-namespace'}
     });
 
-    // Create secrets 
+    // Create secrets
     const postgresqlSecrets = new secretsmanager.Secret(this, 'postgresqlSecrets', {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: 'admin' }),
@@ -78,7 +78,7 @@ export class CdkStack extends cdk.Stack {
       }
     })
 
-    // TODO add wallet secret 
+    // TODO add wallet secret
 
     // Install postgres helm chart
     new HelmChart(this, 'PostgreSQL', {
@@ -86,23 +86,24 @@ export class CdkStack extends cdk.Stack {
       cluster,
       chart: 'postgresql',
       repository: 'https://charts.bitnami.com/bitnami',
-      namespace: 'node-namespace', 
+      namespace: 'node-namespace',
       release: 'database',
       values: {
         'postgresqlPassword': postgresqlSecrets.secretValueFromJson('password'),
         'postgresqlUsername': postgresqlSecrets.secretValueFromJson('username').toString(),
         'postgresqlDatabase': 'chainlink'
       },
-      
-    });        
+
+    });
     //postgresChart.node.addDependency(namespace);
 
 
     // Read Yaml files
     //const manifestsFolder = 'manifests/';
     //readYamlFromDir(manifestsFolder, cluster)
-  
+
     const appLabel = { app: "chainlink-node" };
+    const dbString =  new String("postgresql://" + postgresqlSecrets.secretValueFromJson('username').toString() + postgresqlSecrets.secretValueFromJson('password') + "@postgres:5432/chainlink?sslmode=disable");
 
     const node_config = {
       apiVersion: "v1",
@@ -119,9 +120,7 @@ export class CdkStack extends cdk.Stack {
         ORACLE_CONTRACT_ADDRESS: "0x9f37f5f695cc16bebb1b227502809ad0fb117e08",
         ALLOW_ORIGINS: "*",
         MINIMUM_CONTRACT_PAYMENT: 100,
-        DATABASE_URL: "postgresql://" + postgresqlSecrets.secretValueFromJson('username').toString() +
-                        postgresqlSecrets.secretValueFromJson('password') +
-                        "@postgres:5432/chainlink?sslmode=disable",
+        DATABASE_URL: dbString.toString(),
         DATABASE_TIMEOUT: 0,
         ETH_URL: "wss://ropsten-rpc.linkpool.io/ws",
       },
@@ -147,12 +146,13 @@ export class CdkStack extends cdk.Stack {
             {
               name: "chainlink-node",
               image: "smartcontract/chainlink:0.10.3",
-              ports: [ { containerPort: 6688 } ]
+              ports: [ { containerPort: 6688 } ],
+              envFrom: [{
+                  configMapRef: { name: "node-config"}
+              }],
+              //args: ["local", "n", "-p",  "/chainlink/.password", "-a", "/chainlink/.api"]
             }
             ],
-            envFrom: [{
-                configMapRef: { name: "node-config"}
-            }]
           }
         }
       }
