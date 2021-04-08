@@ -150,7 +150,7 @@ export class CdkStack extends cdk.Stack {
               ports: [ { containerPort: 6688 } ]
             }
             ],
-            env_from: [{
+            envFrom: [{
                 configMapRef: { name: "node-config"}
             }]
           }
