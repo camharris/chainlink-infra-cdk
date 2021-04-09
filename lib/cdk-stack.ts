@@ -3,6 +3,7 @@ import * as ec2 from '@aws-cdk/aws-ec2';
 import * as eks from '@aws-cdk/aws-eks';
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as iam from '@aws-cdk/aws-iam';
+import * as rds from '@aws-cdk/aws-rds';
 import { readYamlFromDir } from '../utils/readfile';
 import { HelmChart, KubernetesManifest } from '@aws-cdk/aws-eks';
 
@@ -64,9 +65,12 @@ export class CdkStack extends cdk.Stack {
 
     // Create secrets
     const postgresqlSecrets = new secretsmanager.Secret(this, 'postgresqlSecrets', {
+      secretName: "db-credentials",
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({ username: 'admin' }),
-        generateStringKey: 'password'
+        secretStringTemplate: JSON.stringify({ username: 'postgres' }),
+        generateStringKey: 'password',
+        excludePunctuation: true,
+        includeSpace: false,
       },
     });
 
@@ -74,36 +78,34 @@ export class CdkStack extends cdk.Stack {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ apiuser: 'charris@protonmail.ch' }),
         generateStringKey: 'apipass',
-        //generateStringKey: ''
       }
     })
 
     // TODO add wallet secret
 
-    // Install postgres helm chart
-    new HelmChart(this, 'PostgreSQL', {
-    //const postgresChart = cluster.addHelmChart('PostgresSQL', {
-      cluster,
-      chart: 'postgresql',
-      repository: 'https://charts.bitnami.com/bitnami',
-      namespace: 'node-namespace',
-      release: 'database',
-      values: {
-        'postgresqlPassword': postgresqlSecrets.secretValueFromJson('password'),
-        'postgresqlUsername': postgresqlSecrets.secretValueFromJson('username').toString(),
-        'postgresqlDatabase': 'chainlink'
-      },
+    // Create db instance
+    const dbinstance = new rds.DatabaseInstance(this, 'Instance', {
+       engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_12}),
+       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+       credentials: rds.Credentials.fromSecret(postgresqlSecrets),
+       //credentials: rds.Credentials.fromGeneratedSecret('postgres'),
+       vpc,
+       vpcSubnets: {
+         subnetType: ec2.SubnetType.PRIVATE
+       },
 
-    });
-    //postgresChart.node.addDependency(namespace);
+     });
 
 
-    // Read Yaml files
-    //const manifestsFolder = 'manifests/';
-    //readYamlFromDir(manifestsFolder, cluster)
 
     const appLabel = { app: "chainlink-node" };
-    const dbString =  new String("postgresql://" + postgresqlSecrets.secretValueFromJson('username').toString() + postgresqlSecrets.secretValueFromJson('password') + "@postgres:5432/chainlink?sslmode=disable");
+    //postgresql://postgres:password@172.17.0.1:5432/chainlink?sslmode=disable
+    //var dbUrl = new String("postgresql://admin:${postgresqlSecrets.secretValueFromJson('password').toString()}:${dbinstance.instanceEndpoint.socketAddress.toString()}/chainlink?sslmode=disable");
+    //const dbUrl =  new String("postgresql://" + postgresqlSecrets.secretValueFromJson('username').toString() + postgresqlSecrets.secretValueFromJson('password') + "@postgres:5432/chainlink?sslmode=disable");
+    //const dbUrl = "postgresql://postgres:${postgresqlSecrets.secretValueFromJson('password')}@${dbinstance.instanceEndpoint.socketAddress.concat('/chainlink?sslmode=disable')}"
+    //const dbUrl = `postgresql://postgres:${postgresqlSecrets.secretValueFromJson('password').toString()}@${dbinstance.instanceEndpoint.socketAddress.toString()}/chainlink?sslmode=disable'`
+    const dbUrl = `${postgresqlSecrets.secretValueFromJson('password').toString().replace(/\n/g, '')}`
+    //const dbUrl = 'asddDsdDSAdasdasDadadsaDASDAd'
 
     const node_config = {
       apiVersion: "v1",
@@ -120,7 +122,7 @@ export class CdkStack extends cdk.Stack {
         ORACLE_CONTRACT_ADDRESS: "0x9f37f5f695cc16bebb1b227502809ad0fb117e08",
         ALLOW_ORIGINS: "*",
         MINIMUM_CONTRACT_PAYMENT: 100,
-        DATABASE_URL: dbString.toString(),
+        DATABASE_URL: `${dbUrl}`,
         DATABASE_TIMEOUT: 0,
         ETH_URL: "wss://ropsten-rpc.linkpool.io/ws",
       },
