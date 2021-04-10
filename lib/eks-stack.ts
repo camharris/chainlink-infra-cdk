@@ -2,12 +2,12 @@ import * as cdk from '@aws-cdk/core';
 import * as ec2 from '@aws-cdk/aws-ec2';
 import * as eks from '@aws-cdk/aws-eks';
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
-import * as iam from '@aws-cdk/aws-iam';
 import * as rds from '@aws-cdk/aws-rds';
-import { readYamlFromDir } from '../utils/readfile';
 import { HelmChart, KubernetesManifest } from '@aws-cdk/aws-eks';
+import { CfnOutput, Fn } from '@aws-cdk/core';
+//import { join } from 'path';
 
-export class CdkStack extends cdk.Stack {
+export class eksStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -99,13 +99,15 @@ export class CdkStack extends cdk.Stack {
 
 
     const appLabel = { app: "chainlink-node" };
+
     //postgresql://postgres:password@172.17.0.1:5432/chainlink?sslmode=disable
-    //var dbUrl = new String("postgresql://admin:${postgresqlSecrets.secretValueFromJson('password').toString()}:${dbinstance.instanceEndpoint.socketAddress.toString()}/chainlink?sslmode=disable");
-    //const dbUrl =  new String("postgresql://" + postgresqlSecrets.secretValueFromJson('username').toString() + postgresqlSecrets.secretValueFromJson('password') + "@postgres:5432/chainlink?sslmode=disable");
-    //const dbUrl = "postgresql://postgres:${postgresqlSecrets.secretValueFromJson('password')}@${dbinstance.instanceEndpoint.socketAddress.concat('/chainlink?sslmode=disable')}"
-    //const dbUrl = `postgresql://postgres:${postgresqlSecrets.secretValueFromJson('password').toString()}@${dbinstance.instanceEndpoint.socketAddress.toString()}/chainlink?sslmode=disable'`
-    const dbUrl = `${postgresqlSecrets.secretValueFromJson('password').toString().replace(/\n/g, '')}`
-    //const dbUrl = 'asddDsdDSAdasdasDadadsaDASDAd'
+    const dbUrl = Fn.join('', [
+      "postgresql://", postgresqlSecrets.secretValueFromJson('username').toString(),":",
+      postgresqlSecrets.secretValueFromJson('password').toString(),  "@",
+      dbinstance.instanceEndpoint.socketAddress.toString(), "/chainlink?sslmode=disable"
+    ]);
+
+    new CfnOutput(this, "dbUrl", { value: dbUrl });
 
     const node_config = {
       apiVersion: "v1",
@@ -122,7 +124,8 @@ export class CdkStack extends cdk.Stack {
         ORACLE_CONTRACT_ADDRESS: "0x9f37f5f695cc16bebb1b227502809ad0fb117e08",
         ALLOW_ORIGINS: "*",
         MINIMUM_CONTRACT_PAYMENT: 100,
-        DATABASE_URL: `${dbUrl}`,
+        //DATABASE_URL: `${dbUrl}`,
+        DATABASE_URL: "postgresql://postgres:password@172.17.0.1:5432/chainlink?sslmode=disable",
         DATABASE_TIMEOUT: 0,
         ETH_URL: "wss://ropsten-rpc.linkpool.io/ws",
       },
