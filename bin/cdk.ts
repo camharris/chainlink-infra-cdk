@@ -6,8 +6,11 @@ import { rdsStack } from '../lib/rds-stack';
 
 const app = new cdk.App();
 
-new eksStack(app, 'CdkStack', {
+const eks = new eksStack(app, 'EksStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
 
-
+const rds = new rdsStack(app, 'RdsStack', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  vpc: eks.vpc,
+});
