@@ -2,7 +2,7 @@ import * as cdk from '@aws-cdk/core';
 import * as rds from '@aws-cdk/aws-rds';
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as ec2 from '@aws-cdk/aws-ec2';
-import * as ecs from '@@aws-cdk/aws-ecs';
+import * as ecs from '@aws-cdk/aws-ecs';
 import { CfnOutput, Fn } from '@aws-cdk/core';
 
 export interface rdsStackProps extends cdk.StackProps {
@@ -43,7 +43,7 @@ export class rdsStack extends cdk.Stack {
         //postgresql://postgres:password@172.17.0.1:5432/chainlink?sslmode=disable
         const dbUrl = Fn.join('', [
           "postgresql://", dbSecrets.secretValueFromJson('username').toString(),":",
-          cdk.SecretValue(dbSecrets.secretValueFromJson('password').toString()).,  "@",
+          dbSecrets.secretValueFromJson('password').toString(),  "@",
           dbinstance.instanceEndpoint.socketAddress.toString(), "/chainlink?sslmode=disable"
         ]);
 
