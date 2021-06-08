@@ -4,7 +4,7 @@ import * as ecs from '@aws-cdk/aws-ecs'
 import { CfnOutput, Fn } from '@aws-cdk/core';
 
 
-export class vpcStack extends cdk.Stack {
+export class infraStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
   public readonly cluster: ecs.Cluster
 

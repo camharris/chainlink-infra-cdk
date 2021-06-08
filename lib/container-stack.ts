@@ -4,7 +4,6 @@ import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
-import { join } from 'path';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -55,8 +54,6 @@ export class containerStack extends cdk.Stack {
               SECURE_COOKIES: "false",
               GAS_UPDATER_ENABLED: "true",
               ALLOW_ORIGINS: "*",
-              // DATABASE_URL2: props.dbUrl,
-              //DATABASE_URL: "postgresql://${DB_USERNAME}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}",
               ETH_URL: "wss://rinkeby.infura.io/ws/v3/c0d927dc916a4b85bdefbcfcd6204736",
             },
           },

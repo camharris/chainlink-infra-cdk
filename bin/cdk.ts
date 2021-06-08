@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
-import { vpcStack } from '../lib/vpc-stack';
+import { infraStack } from '../lib/infra-stack';
 import { rdsStack } from '../lib/rds-stack';
 import { containerStack } from '../lib/container-stack';
 
 const app = new cdk.App();
 
-const myVpc = new vpcStack(app, 'VpcStack', {
+const myVpc = new infraStack(app, 'VpcStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
 
