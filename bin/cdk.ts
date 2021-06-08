@@ -19,6 +19,7 @@ const rds = new rdsStack(app, 'RdsStack', {
 const myEcs = new containerStack(app, 'ContainerStack', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   vpc: myVpc.vpc,
+  cluster: myVpc.cluster,
   dbUrl: rds.dbUrl,
   dbSecrets: rds.dbSecrets,
 });

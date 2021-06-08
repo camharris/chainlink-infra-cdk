@@ -8,6 +8,7 @@ import { join } from 'path';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
+  readonly cluster: ecs.ICluster,
   readonly dbSecrets: secretsmanager.ISecret,
   readonly dbUrl: string,
 }
@@ -28,15 +29,9 @@ export class containerStack extends cdk.Stack {
             
         });
 
-        const cluster = new ecs.Cluster(this, 'Cluster', {
-          vpc: props.vpc
-        });
-
-        const importedDbSecret = secretsmanager.Secret.fromSecretName(this, "ImportedSecret", "db-credentials");
-        //const importedDbSecret = secretsmanager.Secret.fromSecretName(this, "ImportedSecret", props.dbSecrets.secretName);
 
         new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
-          cluster: cluster,
+          cluster: props.cluster,
           cpu: 512,
           desiredCount: 1,
           taskImageOptions: {

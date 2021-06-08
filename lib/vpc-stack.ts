@@ -1,10 +1,12 @@
 import * as cdk from '@aws-cdk/core';
 import * as ec2 from '@aws-cdk/aws-ec2';
+import * as ecs from '@aws-cdk/aws-ecs'
 import { CfnOutput, Fn } from '@aws-cdk/core';
 
 
 export class vpcStack extends cdk.Stack {
   public readonly vpc: ec2.Vpc;
+  public readonly cluster: ecs.Cluster
 
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -16,8 +18,9 @@ export class vpcStack extends cdk.Stack {
       maxAzs: 3,
     });
 
-    // Parameter store
-
+    this.cluster = new ecs.Cluster(this, 'Cluster', {
+      vpc: this.vpc
+    });
 
   }
 }

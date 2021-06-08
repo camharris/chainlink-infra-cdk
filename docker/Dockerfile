@@ -24,6 +24,4 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
 RUN echo "${api_user}" > /chainlink/.api && echo "${api_pass}" >> /chainlink/.api &&\
     echo "${password}" > /chainlink/.password
 ENTRYPOINT []
-# ["DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}""]
-#CMD ["local", "node", "-p", "/chainlink/.password", "-a", "/chainlink/.api"]
-CMD ["sh", "-c", "export", "DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME", ";", "chainlink", "local", "node", "-p", "/chainlink/.password", "-a", "/chainlink/.api"]
+CMD ["sh", "-c", "export DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASS@$DB_HOST:$DB_PORT/$DB_NAME && echo $DATABASE_URL && chainlink local node -p /chainlink/.password -a /chainlink/.api"]
