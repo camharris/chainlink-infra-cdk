@@ -42,7 +42,6 @@ export class containerStack extends cdk.Stack {
               DB_USERNAME: ecs.Secret.fromSecretsManager(props.dbSecrets, 'username'),
               DB_HOST: ecs.Secret.fromSecretsManager(props.dbSecrets, 'host'),
               DB_PORT: ecs.Secret.fromSecretsManager(props.dbSecrets, 'port'),
-              //DATABASE_URL: ecs.Secret.fromSecretsManager(props.dbSecrets, 'host'),
             },
             environment: {
               ROOT: "/chainlink",
