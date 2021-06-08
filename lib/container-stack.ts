@@ -1,11 +1,15 @@
+import * as cdk from '@aws-cdk/core';
 import * as ec2 from '@aws-cdk/aws-ec2';
-import * as eks from '@aws-cdk/aws-eks';
+import * as ecs from '@aws-cdk/aws-ecs';
+import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
+import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
-import { HelmChart, KubernetesManifest } from '@aws-cdk/aws-eks';
+import { join } from 'path';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
-  readonly cluster: eks.ICluster,
+  readonly dbSecrets: secretsmanager.ISecret,
+  readonly dbUrl: string,
 }
 
 export class containerStack extends cdk.Stack {
@@ -13,69 +17,59 @@ export class containerStack extends cdk.Stack {
     super(scope, id, props);
 
 
-        const appLabel = { app: "chainlink-node" };
+        const nodeImage =  new ecr_assets.DockerImageAsset(this, 'NodeImage', {
+            directory: 'docker/',
+            exclude: ['.git'],
+            buildArgs: {
+              api_user: "user@domain.com",
+              api_pass: "Pl3as3Chang3M3",
+              password: "FDAFsdf4345fgGFGkuiy76445",
+            },
+            
+        });
 
+        const cluster = new ecs.Cluster(this, 'Cluster', {
+          vpc: props.vpc
+        });
 
-        const node_config = {
-          apiVersion: "v1",
-          kind: "ConfigMap",
-          metadata: { name: "node-config" },
-          data: {
-            ROOT: "/chainlink",
-            LOG_LEVEL: "debug",
-            ETH_CHAIN_ID: 3,
-            MIN_OUTGOING_CONFIRMATIONS: 2,
-            LINK_CONTRACT_ADDRESS: "0x20fe562d797a42dcb3399062ae9546cd06f63280",
-            CHAINLINK_TLS_PORT: 0,
-            SECURE_COOKIES: false,
-            ORACLE_CONTRACT_ADDRESS: "0x9f37f5f695cc16bebb1b227502809ad0fb117e08",
-            ALLOW_ORIGINS: "*",
-            MINIMUM_CONTRACT_PAYMENT: 100,
-            //DATABASE_URL: `${dbUrl}`,
-            DATABASE_URL: "postgresql://postgres:password@172.17.0.1:5432/chainlink?sslmode=disable",
-            DATABASE_TIMEOUT: 0,
-            ETH_URL: "wss://ropsten-rpc.linkpool.io/ws",
+        const importedDbSecret = secretsmanager.Secret.fromSecretName(this, "ImportedSecret", "db-credentials");
+        //const importedDbSecret = secretsmanager.Secret.fromSecretName(this, "ImportedSecret", props.dbSecrets.secretName);
+
+        new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
+          cluster: cluster,
+          cpu: 512,
+          desiredCount: 1,
+          taskImageOptions: {
+            image: ecs.ContainerImage.fromDockerImageAsset(nodeImage),
+            containerPort: 6688,
+            secrets: {
+              DB_PASS: ecs.Secret.fromSecretsManager(props.dbSecrets, 'password'),
+              DB_NAME: ecs.Secret.fromSecretsManager(props.dbSecrets, 'dbname'),
+              DB_USERNAME: ecs.Secret.fromSecretsManager(props.dbSecrets, 'username'),
+              DB_HOST: ecs.Secret.fromSecretsManager(props.dbSecrets, 'host'),
+              DB_PORT: ecs.Secret.fromSecretsManager(props.dbSecrets, 'port'),
+              //DATABASE_URL: ecs.Secret.fromSecretsManager(props.dbSecrets, 'host'),
+            },
+            environment: {
+              ROOT: "/chainlink",
+              LOG_LEVEL: "debug",
+              ETH_CHAIN_ID: "4",
+              MIN_OUTGOING_CONFIRMATIONS: "2",
+              LINK_CONTRACT_ADDRESS: "0x01BE23585060835E02B77ef475b0Cc51aA1e0709",
+              CHAINLINK_TLS_PORT: "0",
+              SECURE_COOKIES: "false",
+              GAS_UPDATER_ENABLED: "true",
+              ALLOW_ORIGINS: "*",
+              // DATABASE_URL2: props.dbUrl,
+              //DATABASE_URL: "postgresql://${DB_USERNAME}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}",
+              ETH_URL: "wss://rinkeby.infura.io/ws/v3/c0d927dc916a4b85bdefbcfcd6204736",
+            },
           },
-        };
 
+          memoryLimitMiB: 4096,
+          publicLoadBalancer: true
 
-        new KubernetesManifest(this, 'nodeConfigMap', {
-          cluster: props.cluster,
-          manifest: [ node_config ]
         });
-
-
-        const deployment = {
-          apiVersion: "apps/v1",
-          kind: "Deployment",
-          metadata: { name: "chainlink-node" },
-          spec: {
-            selector: { matchLabels: appLabel },
-            template: {
-              metadata: { labels: appLabel },
-              spec: {
-                containers: [
-                {
-                  name: "chainlink-node",
-                  image: "smartcontract/chainlink:0.10.3",
-                  ports: [ { containerPort: 6688 } ],
-                  envFrom: [{
-                      configMapRef: { name: "node-config"}
-                  }],
-                  //args: ["local", "n", "-p",  "/chainlink/.password", "-a", "/chainlink/.api"]
-                }
-                ],
-              }
-            }
-          }
-        }; // End Deployment manifest
-
-        new KubernetesManifest(this, 'chainlink-deployment', {
-          cluster: props.cluster,
-          manifest: [ deployment ]
-        });
-
-
 
   }
 }
