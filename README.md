@@ -6,19 +6,27 @@ This CDK application currently will deploy the following into the default AWS en
 - 1 vpc (for the following to be deployed into)
 - 3 availability zones
 - 1 ECS cluster 
-- 1 RDS instance configured for the node
+- 1 RDS instance for each of the following:
 - 1 Rinkeby network Chainlink node Fargate task 
+- 1 Kovan network Chainlink node Fargate task 
+- 1 Mainnet network Chainlink node Fargate task 
 
 ## TODO
-* Refactor containerStack to take arguments that can be used to deploy a rinkeby node or mainnet node.
-* Move away from Fargate and to ec2 ECS tasks in order to use persistent storage 
+* Randomly generate wallet password and api_pass and add to AWS ssm
+* Allow command line parameter of api_user 
+
+## Configure
+1. Edit `bin/cdk.ts` and set the appropriate eth_url for each node.
+2. Edit `lib/container-stack.ts` and set the desired `api_user`, `api_pass`, and `password`
+
 
 ## Deployment 
 * Make sure your AWS credentials are configured for the desired environment
  * `cdk bootstrap`   bootstrap your CDK environment 
  * `cdk deploy InfraStack`  deploy the infra/vpc/cluster to your default AWS account/region
- * `cdk deploy RdsStack` deploy the rds deployment to your default AWS account/region
- * `cdk deploy ContainerStack` deploy Rinkeby chainlink node to your ECS cluster
+ * `cdk deploy rinkeby-node` deploy Rinkeby Chainlink node with rds instance, and associated secret
+ * `cdk deploy kovan-node` deploy Kovan Chainlink node with rds instance, and associated secret
+ * `cdk deploy mainnet-node` deploy Mainnet Chainlink node with rds instance, and associated secret
 
 One deployed the app will export the LB url to used for logging into the node's UI. 
 
