@@ -5,6 +5,7 @@ import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as rds from '@aws-cdk/aws-rds';
+import { CfnParameter } from '@aws-cdk/core';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -19,7 +20,7 @@ export class containerStack extends cdk.Stack {
 
 
         const dbSecrets = new secretsmanager.Secret(this, 'dbSecrets', {
-            secretName: props.network.name +"db-credentials",
+            secretName: props.network.name +"-db-credentials",
             generateSecretString: {
               secretStringTemplate: JSON.stringify({ username: 'postgres' }),
               generateStringKey: 'password',
@@ -27,6 +28,7 @@ export class containerStack extends cdk.Stack {
               includeSpace: false,
             },
         });
+
 
         const dbSecurityGroup = new ec2.SecurityGroup(this, 'dbSecurityGroup', { vpc: props.vpc, securityGroupName: "chainlink-"+props.network.name+"-db-securityGroup" });
         dbSecurityGroup.addIngressRule(ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(5432));
@@ -45,16 +47,15 @@ export class containerStack extends cdk.Stack {
             databaseName: "chainlink"
         });
 
-        // TODO add randomly generated secret for the passwords 
+
         const nodeImage =  new ecr_assets.DockerImageAsset(this, 'NodeImage', {
             directory: 'docker/',
             exclude: ['.git'],
             buildArgs: {
-              api_user: "user@domain.com",
-              api_pass: "Pl3as3Chang3M3",
-              password: "FDAFsdf4345fgGFGkuiy76445",
-            },
-            
+              api_user: process.env.API_USER || "admin@domain.com",
+              api_pass: process.env.API_PASS || "r4nd0mUIpa55wordstr1ng",
+              password: process.env.PASSWORD || "r4nd0mW4ll3tpa55wordstr1ng",
+            }    
         });
 
 
@@ -85,6 +86,7 @@ export class containerStack extends cdk.Stack {
               GAS_UPDATER_ENABLED: "true",
               ALLOW_ORIGINS: "*",
               ETH_URL: props.network.eth_url,
+              JSON_CONSOLE: "true",
             },
           },
 
