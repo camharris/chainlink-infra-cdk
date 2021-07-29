@@ -79,7 +79,6 @@ export class containerStack extends cdk.Stack {
               ROOT: "/chainlink",
               LOG_LEVEL: "debug",
               ETH_CHAIN_ID: props.network.eth_chain_id,
-              MIN_OUTGOING_CONFIRMATIONS: props.network.min_outgoing_confirmations,
               LINK_CONTRACT_ADDRESS: props.network.link_contract_address,
               CHAINLINK_TLS_PORT: "0",
               SECURE_COOKIES: "false",
@@ -87,6 +86,7 @@ export class containerStack extends cdk.Stack {
               ALLOW_ORIGINS: "*",
               ETH_URL: props.network.eth_url,
               JSON_CONSOLE: "true",
+              LOG_TO_DISK: "false",
             },
           },
 

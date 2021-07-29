@@ -37,15 +37,28 @@ const kovanNode = new containerStack(app, 'kovan-node', {
   },
 });
 
-const mainnetNode = new containerStack(app, 'mainnet-node', {
+const ethMainnetNode = new containerStack(app, 'eth-mainnet-node', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   vpc: myVpc.vpc,
   cluster: myVpc.cluster,
   network: {
-    name: "mainnet",
+    name: "eth-mainnet",
     eth_chain_id: "1",
     eth_url: process.env.ETH_URL || "wss://",
     min_outgoing_confirmations: "2",
     link_contract_address: "0x514910771AF9Ca656af840dff83E8264EcF986CA"
+  },
+});
+
+const bscMainnetNode = new containerStack(app, 'bsc-mainnet-node', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  vpc: myVpc.vpc,
+  cluster: myVpc.cluster,
+  network: {
+    name: "bsc-mainnet",
+    eth_chain_id: "56",
+    eth_url: process.env.ETH_URL || "wss://",
+    min_outgoing_confirmations: "2",
+    link_contract_address: "0x404460c6a5ede2d891e8297795264fde62adbb75"
   },
 });
