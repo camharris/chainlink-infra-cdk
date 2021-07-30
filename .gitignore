@@ -6,8 +6,10 @@
 *.seed
 *.tgz
 *.tsbuildinfo
+*notes*
 .cache
 .cdk.staging/
+.env
 .eslintcache
 .nyc_output
 .parcel-cache/
@@ -17,6 +19,8 @@
 /lib
 /test-reports/
 build/Release
+cdk.context.json
+cdk.out
 cdk.out/
 coverage
 jspm_packages/
