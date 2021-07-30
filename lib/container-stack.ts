@@ -5,7 +5,10 @@ import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as rds from '@aws-cdk/aws-rds';
+import * as iam from '@aws-cdk/aws-iam';
 import { CfnParameter } from '@aws-cdk/core';
+import { Grant, IRole, Role } from '@aws-cdk/aws-iam';
+import { IMachineImage } from '@aws-cdk/aws-ec2';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -59,7 +62,7 @@ export class containerStack extends cdk.Stack {
         });
 
 
-        new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
+        const ecsDeployment = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
           cluster: props.cluster,
           serviceName: "chainlink-"+ props.network.name +"-service",
           cpu: 512,
@@ -94,6 +97,15 @@ export class containerStack extends cdk.Stack {
           publicLoadBalancer: true
 
         });
+
+        // Add need policy for EnabledExecuteCommand
+        ecsDeployment.taskDefinition.taskRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'))
+
+        // Use escape hatch to add EnabledExecuteCommand to cf template
+        const cfnService = ecsDeployment.service.node.defaultChild as ecs.CfnService;
+        cfnService.addPropertyOverride('EnableExecuteCommand', true)
+        
+
 
   }
 }
