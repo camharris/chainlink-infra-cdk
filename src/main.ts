@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from '@aws-cdk/core';
-import { infraStack } from '../lib/infra-stack';
-import { containerStack } from '../lib/container-stack';
+import { infraStack } from './lib/infra-stack';
+import { containerStack } from './lib/container-stack';
 
 const app = new cdk.App();
 

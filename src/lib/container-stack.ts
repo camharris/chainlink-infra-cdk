@@ -47,7 +47,7 @@ export class containerStack extends cdk.Stack {
 
         // TODO add randomly generated secret for the passwords 
         const nodeImage =  new ecr_assets.DockerImageAsset(this, 'NodeImage', {
-            directory: 'docker/',
+            directory: 'src/docker/',
             exclude: ['.git'],
             buildArgs: {
               api_user: "user@domain.com",
