@@ -9,24 +9,29 @@ This CDK application currently will deploy the following into the default AWS en
 - 1 RDS instance for each of the following:
 - 1 Rinkeby network Chainlink node Fargate task 
 - 1 Kovan network Chainlink node Fargate task 
-- 1 Mainnet network Chainlink node Fargate task 
+- 1 Ethereum Mainnet network Chainlink node Fargate task 
 
-## TODO
-* Randomly generate wallet password and api_pass and add to AWS ssm
-* Allow command line parameter of api_user 
-
-## Configure
-1. Edit `bin/cdk.ts` and set the appropriate eth_url for each node.
-2. Edit `lib/container-stack.ts` and set the desired `api_user`, `api_pass`, and `password`
 
 
 ## Deployment 
 * Make sure your AWS credentials are configured for the desired environment
  * `cdk bootstrap`   bootstrap your CDK environment 
  * `cdk deploy InfraStack`  deploy the infra/vpc/cluster to your default AWS account/region
- * `cdk deploy rinkeby-node` deploy Rinkeby Chainlink node with rds instance, and associated secret
- * `cdk deploy kovan-node` deploy Kovan Chainlink node with rds instance, and associated secret
- * `cdk deploy mainnet-node` deploy Mainnet Chainlink node with rds instance, and associated secret
+ 
+There is a deployment wrapper script that is used for deploying the actual nodes. This allows you to specify the UI credetials and wallet password on the command line. This could potentially be useful in some CI processes. 
+ 
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" rinkeby-node` deploy Rinkeby Chainlink node with rds instance, and associated secret
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" kovan-node` deploy Kovan Chainlink node with rds instance, and associated secret
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" mainnet-node` deploy Mainnet Chainlink node with rds instance, and associated secret
+
+The wrapper script and be bypassed exported the variables as environment variables:
+```
+$ export API_USER="user@domain.com" \
+  export API_PASS="r4nd0mUIpa55wordstr1ng" \
+  export PASSWORD="r4nd0mW4ll3tpa55wordstr1ng" \
+  export ETH_URL="wss://kovan.infura.io/ws/v3/$PROJECT_ID" \
+  cdk deploy kovan-node
+```
 
 One deployed the app will export the LB url to used for logging into the node's UI. 
 

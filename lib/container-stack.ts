@@ -5,6 +5,10 @@ import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
 import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as rds from '@aws-cdk/aws-rds';
+import * as iam from '@aws-cdk/aws-iam';
+import { CfnParameter } from '@aws-cdk/core';
+import { Grant, IRole, Role } from '@aws-cdk/aws-iam';
+import { IMachineImage } from '@aws-cdk/aws-ec2';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -19,7 +23,7 @@ export class containerStack extends cdk.Stack {
 
 
         const dbSecrets = new secretsmanager.Secret(this, 'dbSecrets', {
-            secretName: props.network.name +"db-credentials",
+            secretName: props.network.name +"-db-credentials",
             generateSecretString: {
               secretStringTemplate: JSON.stringify({ username: 'postgres' }),
               generateStringKey: 'password',
@@ -27,6 +31,7 @@ export class containerStack extends cdk.Stack {
               includeSpace: false,
             },
         });
+
 
         const dbSecurityGroup = new ec2.SecurityGroup(this, 'dbSecurityGroup', { vpc: props.vpc, securityGroupName: "chainlink-"+props.network.name+"-db-securityGroup" });
         dbSecurityGroup.addIngressRule(ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(5432));
@@ -45,20 +50,19 @@ export class containerStack extends cdk.Stack {
             databaseName: "chainlink"
         });
 
-        // TODO add randomly generated secret for the passwords 
+
         const nodeImage =  new ecr_assets.DockerImageAsset(this, 'NodeImage', {
             directory: 'docker/',
             exclude: ['.git'],
             buildArgs: {
-              api_user: "user@domain.com",
-              api_pass: "Pl3as3Chang3M3",
-              password: "FDAFsdf4345fgGFGkuiy76445",
-            },
-            
+              api_user: process.env.API_USER || "admin@domain.com",
+              api_pass: process.env.API_PASS || "r4nd0mUIpa55wordstr1ng",
+              password: process.env.PASSWORD || "r4nd0mW4ll3tpa55wordstr1ng",
+            }    
         });
 
 
-        new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
+        const ecsDeployment = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
           cluster: props.cluster,
           serviceName: "chainlink-"+ props.network.name +"-service",
           cpu: 512,
@@ -78,13 +82,14 @@ export class containerStack extends cdk.Stack {
               ROOT: "/chainlink",
               LOG_LEVEL: "debug",
               ETH_CHAIN_ID: props.network.eth_chain_id,
-              MIN_OUTGOING_CONFIRMATIONS: props.network.min_outgoing_confirmations,
               LINK_CONTRACT_ADDRESS: props.network.link_contract_address,
               CHAINLINK_TLS_PORT: "0",
               SECURE_COOKIES: "false",
               GAS_UPDATER_ENABLED: "true",
               ALLOW_ORIGINS: "*",
               ETH_URL: props.network.eth_url,
+              JSON_CONSOLE: "true",
+              LOG_TO_DISK: "false",
             },
           },
 
@@ -92,6 +97,15 @@ export class containerStack extends cdk.Stack {
           publicLoadBalancer: true
 
         });
+
+        // Add need policy for EnabledExecuteCommand
+        ecsDeployment.taskDefinition.taskRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'))
+
+        // Use escape hatch to add EnabledExecuteCommand to cf template
+        const cfnService = ecsDeployment.service.node.defaultChild as ecs.CfnService;
+        cfnService.addPropertyOverride('EnableExecuteCommand', true)
+        
+
 
   }
 }
