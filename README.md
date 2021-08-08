@@ -11,7 +11,11 @@ This CDK application currently will deploy the following into the default AWS en
 - 1 Kovan network Chainlink node Fargate task 
 - 1 Ethereum Mainnet network Chainlink node Fargate task 
 
+The nodes are provisioned in a private subnet without access to the internet. Each node is also provisioned with an RDS postgres instance, an elastic load balancer listening on HTTP and a AWS Secrets manager record with the RDS instance credentials. 
 
+Node logs are currently be logged to AWS Cloudwatch. TODO: Implement alerts on cloudwatch events and to add uptime 
+
+<img src="chainlink-infra-diagram.png">
 
 ## Deployment 
 * Make sure your AWS credentials are configured for the desired environment

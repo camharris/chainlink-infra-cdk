@@ -2,13 +2,16 @@ import * as cdk from '@aws-cdk/core';
 import * as ec2 from '@aws-cdk/aws-ec2';
 import * as ecs from '@aws-cdk/aws-ecs';
 import * as ecr_assets from '@aws-cdk/aws-ecr-assets';
-import * as ecs_patterns from "@aws-cdk/aws-ecs-patterns";
 import * as secretsmanager from '@aws-cdk/aws-secretsmanager';
 import * as rds from '@aws-cdk/aws-rds';
 import * as iam from '@aws-cdk/aws-iam';
-import { CfnParameter } from '@aws-cdk/core';
-import { Grant, IRole, Role } from '@aws-cdk/aws-iam';
-import { IMachineImage } from '@aws-cdk/aws-ec2';
+import * as efs from '@aws-cdk/aws-efs';
+import * as route53 from '@aws-cdk/aws-route53';
+import { HostedZone } from '@aws-cdk/aws-route53';
+import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
+import { Port, Protocol } from '@aws-cdk/aws-ec2';
+import { Duration } from '@aws-cdk/core';
+import { url } from 'inspector';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -61,24 +64,60 @@ export class containerStack extends cdk.Stack {
             }    
         });
 
+        const fileSystem = new efs.FileSystem(this, 'FileSystem', {
+          vpc: props.vpc,
+          performanceMode: efs.PerformanceMode.GENERAL_PURPOSE,
+          throughputMode: efs.ThroughputMode.BURSTING    
+        });
 
-        const ecsDeployment = new ecs_patterns.ApplicationLoadBalancedFargateService(this, 'EcsPattern', {
-          cluster: props.cluster,
-          serviceName: "chainlink-"+ props.network.name +"-service",
+        const accessPoint = fileSystem.addAccessPoint('AccessPoint', {
+          path: '/chainlink', // This will probably overwrite the contents 
+          posixUser: {
+            uid: '1000',
+            gid: '1000',
+          },
+          createAcl: {
+            ownerGid: '1000',
+            ownerUid: '1000',
+            permissions: '755',
+          }
+        })
+
+        const taskDefinition = new ecs.FargateTaskDefinition(this, 'nodeServiceDefinition', {
+          memoryLimitMiB: 4096,
           cpu: 512,
-          desiredCount: 1,
-          taskImageOptions: {
-            containerName: "chainlink-"+ props.network.name +"-node",
-            image: ecs.ContainerImage.fromDockerImageAsset(nodeImage),
-            containerPort: 6688,
-            secrets: {
+          family: "chainlink-"+props.network.name+"-definition",
+        });
+
+        taskDefinition.addVolume({
+          name: props.network.name+"-node-volume",
+          efsVolumeConfiguration: {
+            fileSystemId: fileSystem.fileSystemId,
+            transitEncryption: 'ENABLED',
+            authorizationConfig: {
+              accessPointId: accessPoint.accessPointId,
+              iam: 'ENABLED'
+            }
+          }
+        });
+
+        taskDefinition.taskRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'))
+
+
+        const containerDefinition = taskDefinition.addContainer('node', {
+          image: ecs.ContainerImage.fromDockerImageAsset(nodeImage),
+          logging: ecs.LogDrivers.awsLogs({streamPrefix: +props.network.name+"-node"}),
+          portMappings: [{
+            containerPort: 6688
+          }],
+          secrets: {
               DB_PASS: ecs.Secret.fromSecretsManager(dbSecrets, 'password'),
               DB_NAME: ecs.Secret.fromSecretsManager(dbSecrets, 'dbname'),
               DB_USERNAME: ecs.Secret.fromSecretsManager(dbSecrets, 'username'),
               DB_HOST: ecs.Secret.fromSecretsManager(dbSecrets, 'host'),
               DB_PORT: ecs.Secret.fromSecretsManager(dbSecrets, 'port'),
-            },
-            environment: {
+          },
+          environment: {
               ROOT: "/chainlink",
               LOG_LEVEL: "debug",
               ETH_CHAIN_ID: props.network.eth_chain_id,
@@ -90,20 +129,66 @@ export class containerStack extends cdk.Stack {
               ETH_URL: props.network.eth_url,
               JSON_CONSOLE: "true",
               LOG_TO_DISK: "false",
-            },
           },
-
-          memoryLimitMiB: 4096,
-          publicLoadBalancer: true
-
+          
         });
 
-        // Add need policy for EnabledExecuteCommand
-        ecsDeployment.taskDefinition.taskRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'))
+        containerDefinition.addMountPoints({
+          containerPath: '/chainlink',
+          sourceVolume: props.network.name+"-node-volume",
+          readOnly: false
+        });
 
-        // Use escape hatch to add EnabledExecuteCommand to cf template
-        const cfnService = ecsDeployment.service.node.defaultChild as ecs.CfnService;
-        cfnService.addPropertyOverride('EnableExecuteCommand', true)
+        const service = new ecs.FargateService(this, 'nodeService', {
+          cluster: props.cluster,
+          serviceName: "chainlink-"+ props.network.name +"-service",
+          taskDefinition,
+          desiredCount: 1,
+          maxHealthyPercent: 100,
+          minHealthyPercent: 0,
+          healthCheckGracePeriod: Duration.minutes(3),
+          enableExecuteCommand: true,
+          // TODO add logging of execute command 
+        });
+        service.connections.allowTo(fileSystem, Port.tcp(2049));
+
+        let certificateArn = this.node.tryGetContext('certificateArn');
+        if (certificateArn) {
+          const loadbalancer = new elbv2.ApplicationLoadBalancer(this, 'LoadBalancer', {vpc: props.vpc, internetFacing: true});
+          new cdk.CfnOutput(this, 'LoadBalancerDNSName', {value: loadbalancer.loadBalancerDnsName});
+
+          const listener = loadbalancer.addListener('Listener', {
+            port: 443,
+            certificateArns: [certificateArn]
+          });
+
+          listener.addTargets('nodeTarge', {
+            port: 6688,
+            protocol: elbv2.ApplicationProtocol.HTTP, 
+            targets: [service],
+            deregistrationDelay: Duration.seconds(10),
+            healthCheck: {
+              path: '/'
+            }
+          });
+      
+
+          const hostedZoneName = this.node.tryGetContext('hostedZoneName')
+          if (hostedZoneName){
+            const hostedZone = HostedZone.fromLookup(this, 'HostedZone', {
+              domainName: hostedZoneName
+            });
+            new route53.CnameRecord(this, 'CnameRecord', {
+              zone: hostedZone,
+              recordName: props.network.name,
+              domainName: loadbalancer.loadBalancerDnsName,
+              ttl: Duration.minutes(1)
+            });
+          }
+          
+        }
+
+
         
 
 
