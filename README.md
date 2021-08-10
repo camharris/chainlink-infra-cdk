@@ -11,7 +11,20 @@ This CDK application currently will deploy the following into the default AWS en
 - 1 Kovan network Chainlink node Fargate task 
 - 1 Ethereum Mainnet network Chainlink node Fargate task 
 
+The nodes are provisioned in a private subnet without access to the internet. Each node is also provisioned with an RDS postgres instance, an elastic load balancer listening on HTTP and a AWS Secrets manager record with the RDS instance credentials. 
 
+Node logs are currently be logged to AWS Cloudwatch. TODO: Implement alerts on cloudwatch events and to add uptime 
+
+<img src="chainlink-infra-diagram.png">
+
+## Pre-Deployment
+Before running this CDK application you will want to make sure you have the [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/work-with.html#work-with-prerequisites) installed and configured for TypeScript. 
+The application expects that you have a DNZ zone managed in route53 to be used for the load balancers. The app also expects that your have an ACM certificate available for the domain managed by route53. 
+You will need the ARN of the SSL certificate for deployment of your nodes.
+
+[Resources for configuring domain in route53](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/migrate-dns-domain-in-use.html)
+
+[Resources for configuring domain in ACM](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html) 
 
 ## Deployment 
 * Make sure your AWS credentials are configured for the desired environment
@@ -20,9 +33,9 @@ This CDK application currently will deploy the following into the default AWS en
  
 There is a deployment wrapper script that is used for deploying the actual nodes. This allows you to specify the UI credetials and wallet password on the command line. This could potentially be useful in some CI processes. 
  
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" rinkeby-node` deploy Rinkeby Chainlink node with rds instance, and associated secret
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" kovan-node` deploy Kovan Chainlink node with rds instance, and associated secret
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" mainnet-node` deploy Mainnet Chainlink node with rds instance, and associated secret
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" rinkeby-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Rinkeby Chainlink node with rds instance, and associated secret
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" kovan-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Kovan Chainlink node with rds instance, and associated secret
+ * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" mainnet-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN ` deploy Mainnet Chainlink node with rds instance, and associated secret
 
 The wrapper script and be bypassed exported the variables as environment variables:
 ```
