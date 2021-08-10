@@ -62,3 +62,16 @@ const bscMainnetNode = new containerStack(app, 'bsc-mainnet-node', {
     link_contract_address: "0x404460c6a5ede2d891e8297795264fde62adbb75"
   },
 });
+
+const bscTestnetNode = new containerStack(app, 'bsc-testnet-node', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  vpc: myVpc.vpc,
+  cluster: myVpc.cluster,
+  network: {
+    name: "bsc-testnet",
+    eth_chain_id: "97",
+    eth_url: process.env.ETH_URL || "wss://",
+    min_outgoing_confirmations: "2",
+    link_contract_address: "0x84b9b910527ad5c03a9ca831909e21e236ea7b06"
+  },
+});

@@ -7,11 +7,14 @@ import * as rds from '@aws-cdk/aws-rds';
 import * as iam from '@aws-cdk/aws-iam';
 import * as efs from '@aws-cdk/aws-efs';
 import * as route53 from '@aws-cdk/aws-route53';
+import * as logs from '@aws-cdk/aws-logs';
+import { RetentionDays } from '@aws-cdk/aws-logs';
 import { HostedZone } from '@aws-cdk/aws-route53';
 import * as elbv2 from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Port, Protocol } from '@aws-cdk/aws-ec2';
 import { Duration } from '@aws-cdk/core';
 import { url } from 'inspector';
+import { PerformanceInsightRetention } from '@aws-cdk/aws-rds';
 
 export interface containerStackProps extends cdk.StackProps {
   readonly vpc: ec2.IVpc,
@@ -70,6 +73,11 @@ export class containerStack extends cdk.Stack {
           throughputMode: efs.ThroughputMode.BURSTING    
         });
 
+
+        const logGroup = new logs.LogGroup(this, 'LogGroup', {
+          retention: RetentionDays.ONE_WEEK,
+        });
+
         const accessPoint = fileSystem.addAccessPoint('AccessPoint', {
           path: '/chainlink', // This will probably overwrite the contents 
           posixUser: {
@@ -106,7 +114,10 @@ export class containerStack extends cdk.Stack {
 
         const containerDefinition = taskDefinition.addContainer('node', {
           image: ecs.ContainerImage.fromDockerImageAsset(nodeImage),
-          logging: ecs.LogDrivers.awsLogs({streamPrefix: +props.network.name+"-node"}),
+          logging: ecs.LogDrivers.awsLogs({
+            streamPrefix: +props.network.name+"-node",
+            logGroup: logGroup
+          }),
           portMappings: [{
             containerPort: 6688
           }],
@@ -129,6 +140,7 @@ export class containerStack extends cdk.Stack {
               ETH_URL: props.network.eth_url,
               JSON_CONSOLE: "true",
               LOG_TO_DISK: "false",
+              ENABLE_EXPERIMENTAL_ADAPTERS: "true",
           },
           
         });

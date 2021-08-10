@@ -1,4 +1,4 @@
-FROM smartcontract/chainlink:latest
+FROM smartcontract/chainlink:0.10.10
 
 ARG api_user
 ARG api_pass
