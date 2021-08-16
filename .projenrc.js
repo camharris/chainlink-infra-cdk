@@ -15,14 +15,14 @@ const project = new AwsCdkTypeScriptApp({
     '@aws-cdk/aws-secretsmanager',
     '@aws-cdk/aws-rds',
   ],
-  description: 'A CDK application for deploying Chainlink oracle nodes', 
+  description: 'A CDK application for deploying Chainlink oracle nodes',
   gitignore: ['cdk.out', 'cdk.context.json', '*notes*', '.env'],
-  packageName: 'chainlink-infra-cdk',            /* The "name" in package.json. */
+  packageName: 'chainlink-infra-cdk', /* The "name" in package.json. */
   entrypoint: 'cdk.ts',
   tsconfig: {
     compilerOptions: {
-      noUnusedLocals: false
-    }
+      noUnusedLocals: false,
+    },
   },
   // projectType: ProjectType.li,  /* Which type of project this is (library/app). */
   // release: undefined,                /* Add release management to this project. */

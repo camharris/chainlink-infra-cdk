@@ -1,6 +1,6 @@
-import * as cdk from '@aws-cdk/core';
 import * as ec2 from '@aws-cdk/aws-ec2';
-import * as ecs from '@aws-cdk/aws-ecs'
+import * as ecs from '@aws-cdk/aws-ecs';
+import * as cdk from '@aws-cdk/core';
 
 
 export class infraStack extends cdk.Stack {
@@ -11,14 +11,14 @@ export class infraStack extends cdk.Stack {
     super(scope, id, props);
 
 
-    this.vpc = new ec2.Vpc(this, "Vpc", {
-      cidr: "10.0.0.0/16",
+    this.vpc = new ec2.Vpc(this, 'Vpc', {
+      cidr: '10.0.0.0/16',
       maxAzs: 3,
     });
 
     this.cluster = new ecs.Cluster(this, 'Cluster', {
       vpc: this.vpc,
-      clusterName: "cdk_chainlink_cluster",
+      clusterName: 'cdk_chainlink_cluster',
     });
 
 
