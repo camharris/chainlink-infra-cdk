@@ -33,9 +33,9 @@ You will need the ARN of the SSL certificate for deployment of your nodes.
  
 There is a deployment wrapper script that is used for deploying the actual nodes. This allows you to specify the UI credetials and wallet password on the command line. This could potentially be useful in some CI processes. 
  
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" rinkeby-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Rinkeby Chainlink node with rds instance, and associated secret
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" kovan-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Kovan Chainlink node with rds instance, and associated secret
- * `./cdk_deploy.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" mainnet-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN ` deploy Mainnet Chainlink node with rds instance, and associated secret
+ * `./deploy_cdk.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" rinkeby-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Rinkeby Chainlink node with rds instance, and associated secret
+ * `./deploy_cdk.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" kovan-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN` deploy Kovan Chainlink node with rds instance, and associated secret
+ * `./deploy_cdk.sh "$API_USER" "$API_PASSWORD" "$PASSWORD" "wss://$ETH_URL" mainnet-node --context hostedZoneName=YOURDOMAIN.COM --context certificateArn=$ACM_CERT_ARN ` deploy Mainnet Chainlink node with rds instance, and associated secret
 
 The wrapper script and be bypassed exported the variables as environment variables:
 ```
